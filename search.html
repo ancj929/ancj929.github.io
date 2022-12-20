@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+    <head>
+        <meta charset="utf-8">
+        <title>大作业</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+        <script type="text/javascript" src="http://api.map.baidu.com/api?type=webgl&v=1.0&ak=tPdeSFOHZfvSlVIGGa9oDQUiDNtt1jEH"></script>
+        <link href="http://mapopen.cdn.bcebos.com/github/BMapGLLib/DrawingManager/src/DrawingManager.min.css" rel="stylesheet">
+        <script type="text/javascript" src="http://mapopen.bj.bcebos.com/github/BMapGLLib/DrawingManager/src/DrawingManager.min.js"></script>
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+        
+        <style type="text/css">
+        body,
+        html,
+        #container {
+            overflow: hidden;
+            width: 100%;
+            height: 800px;
+            margin: 0;
+            font-family: "微软雅黑";
+        }
+        .info {
+            z-index: 999;
+            width: auto;
+            min-width: 22rem;
+            padding: .75rem 1.25rem;
+            margin-left: 1.25rem;
+            position: fixed;
+            top: 1rem;
+            background-color: #fff;
+            border-radius: .25rem;
+            font-size: 14px;
+            color: #666;
+            box-shadow: 0 2px 6px 0 rgba(27, 142, 236, 0.5);
+        }
+        /* .btn-wrap {
+        z-index: 999;
+        position: fixed;
+        bottom: 3.5rem;
+        margin-left: 3rem;
+        padding: 1rem 1rem;
+        border-radius: .25rem;
+        background-color: #fff;
+        box-shadow: 0 2px 6px 0 rgba(27, 142, 236, 0.5);
+    } */
+    .drawing-panel {
+            z-index: 999;
+            position: fixed;
+            bottom: 3.5rem;
+            margin-left: 4rem;
+            padding: 1rem 1rem;
+            border-radius: .25rem;
+            background-color: #fff;
+            box-shadow: 0 2px 6px 0 rgba(27, 142, 236, 0.5);
+        }
+        .drawing-panec {
+            z-index: 999;
+            position: fixed;
+            bottom: 0.5rem;
+            margin-left: 2.5rem;
+            padding-left: 0;
+            border-radius: .25rem;
+            height: 47px;
+            box-shadow: 0 2px 6px 0 rgba(27, 142, 236, 0.5);
+        }
+        .draw-btn {
+            width: 75px;
+            height: 30px;
+            background-color: #fff;
+            color: rgba(27, 142, 236, 1);
+            border:1px solid rgba(27, 142, 236, 1);
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+    .btn:hover {
+        background-color: rgba(27, 142, 236, 0.8);
+        color: #fff;
+    }
+        ul li {
+        list-style: none;
+    }
+    
+    .bmap-btn {
+            border-right: 1px solid #d2d2d2;
+            float: left;
+            width: 64px;
+            height: 100%;
+            background-image: url(http://api.map.baidu.com/library/DrawingManager/1.4/src/bg_drawing_tool.png);
+            cursor: pointer;
+        }
+        .drawing-panec .bmap-marker {
+            background-position: -65px 0;
+        }
+        .drawing-panec .bmap-polyline {
+            background-position: -195px 0;
+        }
+        .drawing-panec .bmap-rectangle {
+            background-position: -325px 0;
+        }
+        .drawing-panec .bmap-polygon {
+            background-position: -260px 0;
+        }
+        .drawing-panec .bmap-circle {
+            background-position: -130px 0;
+        }
+        </style>
+        <!-- <script src="http://api.map.baidu.com/api?type=webgl&v=1.0&ak=tPdeSFOHZfvSlVIGGa9oDQUiDNtt1jEH"></script> -->
+        <script type="text/javascript" src="http://mapopen.cdn.bcebos.com/github/BMapGLLib/DistanceTool/src/DistanceTool.min.js"></script>
+        
+    </head>
+
+<body>
+    <div id="r-result">请输入:<input type="text" id="suggestId" size="20" value="百度" style="width:150px;" /></div>
+    <div id="searchResultPanel" style="border:1px solid #C0C0C0;width:150px;height:auto; display:none;"></div>
+    <div class="">
+        地址:<input type="text" id="address" value="" readonly="readonly" placeholder="请输入地址" />
+    </div>
+    <div id="container"></div>
+    <ul class = "drawing-panel">
+        <input type="button" class="draw-btn" value="开启测距" onclick="myDis.open()">
+        <input type="button" class="draw-btn" value="关闭测距" onclick="myDis.close()">
+    </ul>
+    <ul class = "drawing-panec">
+        <li class="bmap-btn bmap-polyline" id="polyline" onclick="draw(this)"></li>
+        <li class="bmap-btn bmap-rectangle" id="rectangle" onclick="draw(this)"></li>
+        <li class="bmap-btn bmap-polygon" id="polygon" onclick="draw(this)"></li>
+        <li class="bmap-btn bmap-circle" id="circle" onclick="draw(this)"></li>
+    </ul>
+</body>
+
+</html>
+<script type="text/javascript">
+    // 百度地图API功能
+    function G(id) {
+        return document.getElementById(id);
+    }
+
+    var map = new BMapGL.Map('container');
+    
+    // 初始化地图,设置城市和地图级别。
+    map.centerAndZoom("北京", 12);
+    //建立一个自动完成的对象
+    var ac = new BMapGL.Autocomplete({
+        "input": "suggestId",
+        "location": map
+    });
+    //鼠标放在下拉列表上的事件
+    ac.addEventListener("onhighlight", function(e) {
+        var str = "";
+        var _value = e.fromitem.value;
+        var value = "";
+        if (e.fromitem.index > -1) {
+            value = _value.province + _value.city + _value.district + _value.street + _value.business;
+        }
+        str = "FromItem<br />index = " + e.fromitem.index + "<br />value = " + value;
+
+        value = "";
+        if (e.toitem.index > -1) {
+            _value = e.toitem.value;
+            value = _value.province + _value.city + _value.district + _value.street + _value.business;
+        }
+        str += "<br />ToItem<br />index = " + e.toitem.index + "<br />value = " + value;
+        G("searchResultPanel").innerHTML = str;
+    });
+
+    var myValue;
+    //鼠标点击下拉列表后的事件
+    ac.addEventListener("onconfirm", function(e) {
+        var _value = e.item.value;
+        myValue = _value.province + _value.city + _value.district + _value.street + _value.business;
+        G("searchResultPanel").innerHTML = "onconfirm<br />index = " + e.item.index + "<br />myValue = " + myValue;
+
+        setPlace();
+    });
+
+    function setPlace() {
+        //清除地图上所有覆盖物
+        map.clearOverlays();
+
+        function myFun() {
+            //获取第一个智能搜索的结果
+            var pp = local.getResults().getPoi(0).point;
+            // 获取搜索结果的详细地址
+			window.alert(local.getResults().getPoi(0).address)
+			let address = local.getResults().getPoi(0).address;
+            // 将获取到的地址填充到表单
+			window.document.getElementById("address").value = address
+            map.centerAndZoom(pp, 18);
+            //添加标注
+            map.addOverlay(new BMapGL.Marker(pp));
+        }
+        //智能搜索
+        var local = new BMapGL.LocalSearch(map, {
+            onSearchComplete: myFun
+        });
+        local.search(myValue);
+    }
+    var navi3DCtrl = new BMapGL.NavigationControl3D();  // 添加3D控件
+    map.addControl(navi3DCtrl);
+    var scaleCtrl = new BMapGL.ScaleControl();  // 添加比例尺控件
+    map.addControl(scaleCtrl);
+    var zoomCtrl = new BMapGL.ZoomControl();  // 添加比例尺控件
+    map.addControl(zoomCtrl);
+    map.enableScrollWheelZoom(true); // 开启鼠标滚轮缩放
+
+
+    var cityControl = new BMapGL.CityListControl({
+            // 控件的停靠位置（可选，默认左上角）
+            anchor: BMAP_ANCHOR_TOP_LEFT,
+            // 控件基于停靠位置的偏移量（可选）
+            offset: new BMapGL.Size(10, 5)
+        });
+        // 将控件添加到地图上
+        map.addControl(cityControl);
+        var cr = new BMapGL.CopyrightControl({
+            anchor: BMAP_ANCHOR_TOP_RIGHT,
+            offset: new BMapGL.Size(20, 20)
+        });   //设置版权控件位置
+	    map.addControl(cr); //添加版权控件
+        var bs = map.getBounds();   //返回地图可视区域
+	    cr.addCopyright({
+            id: 1, 
+            content: "<img src='./123.jpeg' width='50px' height='50px'/><a href='#' style='font-size:16px;color:#000'>@202218006010048安晨瑾</a>", 
+            bounds: bs
+        });
+        // map.setCopyrightOffset();
+var myDis = new BMapGLLib.DistanceTool(map);
+
+// 监听测距过程中的鼠标事件
+myDis.addEventListener('drawend', function(e) {
+    console.log("drawend");
+    console.log(e.points);
+    console.log(e.overlays);
+    console.log(e.distance);
+});
+myDis.addEventListener("addpoint", function(e) {
+    console.log("addpoint");
+    console.log(e.point);
+    console.log(e.pixel);
+    console.log(e.index);
+    console.log(e.distance);
+});
+myDis.addEventListener("removepolyline", function(e) {
+    console.log("removepolyline");
+    console.log(e);
+});
+var menu = new BMapGL.ContextMenu();
+var txtMenuItem = [
+    {
+        text: '放大一级',
+        callback: function () {
+            map.zoomIn();
+        }
+    }, {
+        text: '缩小一级',
+        callback: function () {
+            map.zoomOut();
+        }
+    }
+];
+for (var i = 0; i < txtMenuItem.length; i++) {
+    menu.addItem(new BMapGL.MenuItem(txtMenuItem[i].text, txtMenuItem[i].callback, 100));
+}
+map.addContextMenu(menu);
+
+var styleOptions = {
+        strokeColor: '#5E87DB',   // 边线颜色
+        fillColor: '#5E87DB',     // 填充颜色。当参数为空时，圆形没有填充颜色
+        strokeWeight: 2,          // 边线宽度，以像素为单位
+        strokeOpacity: 1,         // 边线透明度，取值范围0-1
+        fillOpacity: 0.2          // 填充透明度，取值范围0-1
+    };
+    var labelOptions = {
+        borderRadius: '2px',
+        background: '#FFFBCC',
+        border: '1px solid #E1E1E1',
+        color: '#703A04',
+        fontSize: '12px',
+        letterSpacing: '0',
+        padding: '5px'
+    };
+
+    // 实例化鼠标绘制工具
+    var drawingManager = new BMapGLLib.DrawingManager(map, {
+        enableCalculate: true,  // 绘制是否进行测距测面
+        enableSorption: true,   // 是否开启边界吸附功能
+        sorptiondistance: 20,   // 边界吸附距离
+        enableGpc: true,        // 是否开启延边裁剪功能
+        enableLimit: true,      // 是否开启超限提示
+        limitOptions: {
+            area: 50000000,     // 面积超限值
+            distance: 30000     // 距离超限值
+        },
+        circleOptions: styleOptions,     // 圆的样式
+        polylineOptions: styleOptions,   // 线的样式
+        polygonOptions: styleOptions,    // 多边形的样式
+        rectangleOptions: styleOptions,  // 矩形的样式
+        labelOptions: labelOptions,      // label样式
+    });  
+
+    function draw(e) {
+        var arr = document.getElementsByClassName('bmap-btn');
+        for(var i = 0; i<arr.length; i++) {
+            arr[i].style.backgroundPositionY = '0';
+        }
+        e.style.backgroundPositionY = '-52px';
+        switch(e.id) {
+            case 'marker': {
+                var drawingType = BMAP_DRAWING_MARKER;
+                break;
+            }
+            case 'polyline': {
+                var drawingType = BMAP_DRAWING_POLYLINE;
+                break;
+            }
+            case 'rectangle': {
+                var drawingType = BMAP_DRAWING_RECTANGLE;
+                break;
+            }
+            case 'polygon': {
+                var drawingType = BMAP_DRAWING_POLYGON;
+                break;
+            }
+            case 'circle': {
+                var drawingType = BMAP_DRAWING_CIRCLE;
+                break;
+            }
+        }
+        // 进行绘制
+        if (drawingManager._isOpen && drawingManager.getDrawingMode() === drawingType) {
+            drawingManager.close();
+        } else {
+            drawingManager.setDrawingMode(drawingType);
+            drawingManager.open();
+        }
+    };
+
+    // 绘制完成后获取相关的信息(面积等)
+    drawingManager.addEventListener('overlaycomplete', function(e) {
+        alert(e.calculate);
+    });
+</script>
